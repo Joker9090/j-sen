@@ -27,8 +27,8 @@ getCanvas =  function() {
   canvas = {}
   canvas.c = document.getElementById("canvas");
   canvas.ctx = canvas.c.getContext("2d");
-  canvas.c.width = 800;
-  canvas.c.height = 600;
+  canvas.c.width = 1800;
+  canvas.c.height = 1800;
   return canvas
 };
 
@@ -62,7 +62,72 @@ T = Time(); T.start(); T.showTime();
 
 start = function(canvas){
   spriteArrow = document.getElementById("spriteArrow");
+  spriteBase = document.getElementById("spriteBase");
+  spriteArma = document.getElementById("spriteArma");
 
+  function mouseMove(e){
+    function getMousePos(canvas, evt) {
+      var rect = canvas.getBoundingClientRect();
+      return {
+          x: (evt.clientX - rect.left) / (rect.right - rect.left) * canvas.width,
+          y: (evt.clientY - rect.top) / (rect.bottom - rect.top) * canvas.height
+      };
+    }
+    coords = getMousePos(canvas.c,e)
+    world.mouseX = coords.x
+    world.mouseY = coords.y
+    world.power = Math.pow(Math.pow((coords.x - base.posX),2)  + Math.pow((base.posY - coords.y),2),0.5)
+    world.calculatePower = function(){
+      //100 = maxPower
+      //1000 = maxDistance
+      return world.power * 100 / 1800 ;
+
+    }
+
+  }
+
+  function shoot(){
+    arma.insideObjects[arma.insideObjects.length] = makeArrow();
+  }
+  canvas.c.addEventListener("mousemove", mouseMove);
+  canvas.c.addEventListener("mousedown", shoot);
+
+
+    world = {};
+    world.gravity = 9.8 * 15;
+    world.air = 0.2;
+
+    base = {}
+    base.width = 92;
+    base.height = 67;
+    base.img = spriteBase;
+    base.posX = 0;
+    base.posY = canvas.c.height - base.height;
+    base.sprites = 1;
+    base.spritePos = 1;
+    base.draw = function(){
+      canvas.ctx.drawImage(base.img,0,0,base.width,base.height,base.posX,base.posY,base.width,base.height)
+      // drawRotatedImage(,this.calculePosX(),this.calculePosY(),this.drawAngle);
+      arma.draw()
+    }
+    arma = {}
+    arma.width = 118;
+    arma.height = 110;
+    arma.img = spriteArma;
+    arma.posX = base.posX + arma.width/2 - 15
+    arma.posY = canvas.c.height - base.height ;
+    arma.sprites = 1;
+    arma.spritePos = 1;
+    arma.insideObjects = [];
+    arma.calcularAngulo = function(){
+        return (Math.atan2(world.mouseX - base.posX, world.mouseY - base.posY) / TO_RADIANS + 280) *-1
+    }
+    arma.draw = function(){
+      for (var i = 0; i < arma.insideObjects.length; i++) {
+        arma.insideObjects[i].draw()
+      }
+      drawRotatedImage(arma.img,arma.posX,arma.posY,arma.calcularAngulo());
+    }
 
    function makeArrow(){
     this.id = (this.id == undefined) ? 0 : this.id+1;
@@ -70,7 +135,7 @@ start = function(canvas){
     arrow.name = "Arrow";
     arrow.id = this.id;
     arrow.img  = spriteArrow;
-    arrow.initialVelocity = Math.floor(Math.random()*(15-8+1)+8);;
+    arrow.initialVelocity = world.calculatePower()
     arrow.width = 91;
     arrow.height = 20;
     arrow.sprites = 1;
@@ -78,25 +143,43 @@ start = function(canvas){
     arrow.sizeX = 91;
     arrow.sizeY = 20;
     arrow.time = T.get();
-    arrow.posX = 0;
-    arrow.stockeable = false;
-    arrow.maxTime = arrow.initialVelocity / 9.8 * 2;
-    arrow.maxHeight = Math.pow(arrow.initialVelocity,2) / (2 * 9,8);
+    arrow.posX = arma.posX ;
+    arrow.posY = arma.height/2 + arrow.height;
+    arrow.stockeable = function(){
+      if(canvas.c.height-this.posY+this.height > canvas.c.height  ) return true;
+      return false;
+    };
+    arrow.maxTime = arrow.initialVelocity / world.gravity * 2;
     arrow.calculePosX = function(){
-      if(canvas.c.height-this.posY+this.height > canvas.c.height && this.stockeable ) return this.posX
-      this.posX = this.posX + Math.cos(this.angle * TO_RADIANS) * this.initialVelocity * (T.get() - this.time);
+      //se clavo?
+      if(this.stockeable()) return this.posX;
+      //MRUV X + Cos A * VelInicial * T + 1/2 * Ac * T al cuadrado
+      this.posX = this.posX + Math.cos(this.angle * TO_RADIANS) * this.initialVelocity * (T.get() - this.time) + 0.5 * world.air * Math.pow((T.get() - this.time),2);
       return this.posX
     };
-    arrow.posY = 0;
+
     arrow.calculePosY = function(){
-      if(canvas.c.height-this.posY+this.height > canvas.c.height && this.stockeable) return canvas.c.height-this.posY
-      exY = this.posY;
-      this.posY = this.posY + Math.sin(this.angle * TO_RADIANS) * this.initialVelocity * (T.get() - this.time) - 0.5 * 9.8 * Math.pow((T.get() - this.time),2) ;
-      this.drawAngle = this.angle *-1 + (T.get() - this.time) * (this.angle/2) / (this.maxTime/2-0.2)
-      if(this.posY < exY) this.stockeable = true;
+      //se clavo?
+      if(this.stockeable()) return canvas.c.height-this.posY;
+
+      //MRUV X + Cos A * VelInicial * T + 1/2 * Ac * T al cuadrado
+      this.posY = this.posY + Math.sin(this.angle * TO_RADIANS) * this.initialVelocity * (T.get() - this.time) - 0.5 * world.gravity * Math.pow((T.get() - this.time),2) ;
+
+      //correcto
+
+      Vy = (this.initialVelocity * Math.sin(this.angle * TO_RADIANS)) - ( world.gravity * (T.get() - this.time));
+      Vx = (this.initialVelocity * Math.cos(this.angle * TO_RADIANS)) + ( world.air * (T.get() - this.time));
+      Tga = Math.atan(Vy/Vx) / TO_RADIANS;
+      this.drawAngle = Tga *-1;
+
+      //lindo
+
+      // this.drawAngle = this.angle *-1 + (T.get() - this.time) * (this.angle/2) / (this.maxTime/2-0.2)
+
+
       return canvas.c.height-this.posY
     }
-    arrow.angle =  Math.floor(Math.random()*(90-45+1)+45);
+    arrow.angle = (arma.calcularAngulo() + 360) *-1 //Math.floor(Math.random()*(90-45+1)+45);
     arrow.drawAngle = arrow.angle*-1;
     arrow.draw = function(){
       drawRotatedImage(this.img,this.calculePosX(),this.calculePosY(),this.drawAngle);
@@ -106,10 +189,11 @@ start = function(canvas){
   }
 
   objects = [];
+  objects[objects.length] = base;
+  //  setInterval(function(){
+  //    objects[objects.length] = makeArrow();
+  //  },2000)
 
-  setInterval(function(){
-    objects[objects.length] = makeArrow();
-  },500)
   function graphEngine(){
     canvas.ctx.fillStyle = "whitesmoke";
     canvas.ctx.fillRect(0,0,canvas.c.width,canvas.c.height)
