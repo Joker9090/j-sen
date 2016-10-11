@@ -5,6 +5,11 @@ var app = express();
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
 
+//Logs tunned
+console.slog = function(text){ console.log("[SERVER] "+ text) }
+console.clog = function(text){ console.log("[CLIENT] "+ text) }
+//Logs tunned
+
 //folders
 function makeFolder(folderName){
   return __dirname + folderName
@@ -21,6 +26,10 @@ app.set('views', views); // ruta base de las vistas
 app.set('view options', { layout: false }); // layout default activado
 //set jade
 
+//socket io calls and returns
+var socketCalls = require( server + '/socketCalls.js' );
+//socket io calls and returns
+
 var controllers = require( server + '/controllers.js' );  // por ahora estan todos los controllers en 1
 var routes = require(makeFolder('/routes.js')); // simulacion de route file
 routes.set({controllers: controllers})
@@ -31,7 +40,8 @@ app.get('*', function(req, res){
   routes.makeRoute(req, res) // procesa el request
 });
 
+socketCalls.getCalls(io);
 port = 3002; // puerto para escuchar
 http.listen(port, function(){
-  console.log('Escuchando en *:'+port);
+  console.slog('Escuchando en *:'+port);
 });

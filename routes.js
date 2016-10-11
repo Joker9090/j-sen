@@ -4,11 +4,11 @@ module.exports = {
     controllers = o.controllers; // seteo del objeto controller
   },
   makeRoute: function(req, res){
-    console.log("[Server] Armando ruta " + req.method + " " + req.originalUrl)
+    console.slog("Armando ruta " + req.method + " " + req.originalUrl)
     switch (req.originalUrl) {
       case "/":
       switch (req.method) {
-        case "GET": controllers.index(res);
+        case "GET": controllers.getIndex(res);
         break;
         case "POST":
 
@@ -18,7 +18,7 @@ module.exports = {
       break;
 
       default:
-      console.log("[Server] No encontro " + req.originalUrl )
+      console.slog("No encontro " + req.originalUrl )
       res.status(404).send('Not found');
     }
 
